@@ -9,12 +9,20 @@ import android.hardware.SensorManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import kotlin.math.abs
+import androidx.lifecycle.ViewModelProvider
+import androidx.activity.viewModels
+
 
 class MainActivity : AppCompatActivity() ,SensorEventListener{
+    private val accelerometerViewModel by viewModels<AccelerometerViewModel>()
+
+
     private var sensorManager: SensorManager ?= null
     private var sensor: Sensor ?= null
     private lateinit var xVal:TextView
@@ -22,7 +30,13 @@ class MainActivity : AppCompatActivity() ,SensorEventListener{
     private lateinit var zVal:TextView
     private lateinit var seekBar : SeekBar
     private lateinit var displaySensitivity: TextView
-    var sensitivity = 1.0;
+    var maxThreshold = 5.0
+    private var xMovementToastShown = false;
+
+    private var yMovementToastShown = false;
+
+    private var zMovementToastShown = false;
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +47,7 @@ class MainActivity : AppCompatActivity() ,SensorEventListener{
         } else {
             setContentView(R.layout.activity_main)
         }
+
         xVal = findViewById(R.id.xId)
         yVal = findViewById(R.id.yId)
         zVal = findViewById(R.id.zId)
@@ -40,18 +55,16 @@ class MainActivity : AppCompatActivity() ,SensorEventListener{
         displaySensitivity = findViewById(R.id.textView)
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         sensor = sensorManager!!.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
-
-        updateTextViews(sensitivity)
+        updateTextViews(accelerometerViewModel.threshold)
         seekBar.max = 100
-        seekBar.progress = 1
+        seekBar.progress = (accelerometerViewModel.threshold).toInt()
         seekBar.min = 0
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
 //                TODO("Not yet implemented")
                 if(fromUser){
-                    sensitivity = progress.toDouble()
-                    updateTextViews(sensitivity)
-
+                    accelerometerViewModel.threshold = progress.toDouble()
+                    updateTextViews(accelerometerViewModel.threshold)
                 }
             }
 
@@ -66,7 +79,7 @@ class MainActivity : AppCompatActivity() ,SensorEventListener{
     }
     private fun updateTextViews(sensitivity: Double) {
         displaySensitivity.text = "${sensitivity}"
-        Toast.makeText(this,"Threshold : ${sensitivity}",Toast.LENGTH_LONG).show()
+//        Toast.makeText(this,"Threshold : ${sensitivity}",Toast.LENGTH_LONG).show()
     }
 
     private fun makeToast(message:String){
@@ -95,28 +108,53 @@ class MainActivity : AppCompatActivity() ,SensorEventListener{
     }
     override fun onSensorChanged(event: SensorEvent?) {
 //        TODO("Not yet implemented")
-           when(event?.sensor?.type){
-               Sensor.TYPE_LINEAR_ACCELERATION-> {
+           if(event!!.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION){
                    var x: Float = event.values[0]
                    var y: Float = event.values[1]
                    var z: Float = event.values[2]
-
-
                    xVal.text = x.toString()
                    yVal.text = y.toString()
                    zVal.text = z.toString()
-                   var magnitude = Math.sqrt((x*x+y*y+z*z).toDouble())
-                   if(magnitude > sensitivity){
+                   val maxAcc:Float = maxOf(abs(x), abs(y), abs(z))
+                   if(maxAcc>accelerometerViewModel.threshold){
+
+                       if(maxAcc == abs(x) && !xMovementToastShown){
+                           Toast.makeText(this,"Significant movement along the X-axis",Toast.LENGTH_LONG).show()
+                           Log.d("Movement","Significant movement along the X-axis")
+                           xMovementToastShown = true;
+                           yMovementToastShown = false
+                           zMovementToastShown = false;
+                       }
+                       else if(maxAcc == abs(y) && !yMovementToastShown){
+                           Toast.makeText(this,"Significant movement along the Y-axis",Toast.LENGTH_LONG).show()
+                           Log.d("Movement","Significant movement along the Y-axis")
+                           yMovementToastShown = true
+                           xMovementToastShown = false
+                           zMovementToastShown = false
+                       }
+                       else if(maxAcc == abs(z) && !zMovementToastShown){
+                           Toast.makeText(this,"Significant movement along the Z-axis",Toast.LENGTH_LONG).show()
+                           Log.d("Movement","Significant movement along the Z-axis")
+                           zMovementToastShown = true
+                           xMovementToastShown = false
+                           yMovementToastShown = false
+                       }
+                   }
+               else{
+                      xMovementToastShown = false;
+                      yMovementToastShown = false;
+                      zMovementToastShown = false;
 
                    }
+
 
 
                }
         }
 
-    }
-
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
 //        TODO("Not yet implemented")
     }
+
+
 }
