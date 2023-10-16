@@ -112,10 +112,10 @@ class MainActivity : AppCompatActivity() ,SensorEventListener{
                    var x: Float = event.values[0]
                    var y: Float = event.values[1]
                    var z: Float = event.values[2]
-                   xVal.text = x.toString()
-                   yVal.text = y.toString()
-                   zVal.text = z.toString()
-                   val maxAcc:Float = maxOf(abs(x), abs(y), abs(z))
+                   xVal.text = accelerometerViewModel.returnStringFromFloat(x)
+                   yVal.text = accelerometerViewModel.returnStringFromFloat(y)
+                   zVal.text = accelerometerViewModel.returnStringFromFloat(z)
+                   val maxAcc:Float = accelerometerViewModel.maxAccelaration(x ,y ,z)
                    if(maxAcc>accelerometerViewModel.threshold){
 
                        if(maxAcc == abs(x) && !xMovementToastShown){
